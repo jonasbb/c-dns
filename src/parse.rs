@@ -24,6 +24,7 @@ pub struct Field {
     pub original: syn::Field,
 }
 
+#[allow(clippy::single_match)]
 fn parse_meta(attrs: &mut StructAttrs, meta: &syn::Meta) -> Result<()> {
     if let syn::Meta::List(value) = meta {
         for meta in &value.nested {
@@ -54,7 +55,7 @@ fn parse_meta(attrs: &mut StructAttrs, meta: &syn::Meta) -> Result<()> {
     Ok(())
 }
 
-fn parse_attrs(attrs: &Vec<syn::Attribute>) -> Result<StructAttrs> {
+fn parse_attrs(attrs: &[syn::Attribute]) -> Result<StructAttrs> {
     let mut struct_attrs: StructAttrs = Default::default();
 
     for attr in attrs {
@@ -104,9 +105,7 @@ impl Parse for Input {
     }
 }
 
-fn fields_from_ast<'a>(
-    fields: &'a syn::punctuated::Punctuated<syn::Field, Token![,]>,
-) -> Vec<Field> {
+fn fields_from_ast(fields: &syn::punctuated::Punctuated<syn::Field, Token![,]>) -> Vec<Field> {
     // serde::internals::ast.rs:L183
     fields
         .iter()
@@ -135,23 +134,21 @@ fn fields_from_ast<'a>(
                     if attr.path.is_ident("serde") {
                         if let Ok(syn::Meta::List(value)) = attr.parse_meta() {
                             for meta in &value.nested {
-                                match meta {
-                                    syn::NestedMeta::Meta(syn::Meta::NameValue(name_value)) => {
-                                        if name_value.path.is_ident("skip_serializing_if") {
-                                            // println!("so close!");
-                                            if let syn::Lit::Str(litstr) = &name_value.lit {
-                                                let tokens =
-                                                    syn::parse_str(&litstr.value()).unwrap();
-                                                // println!("found something: {:?}", &litstr.value());
-                                                skip_serializing_if =
-                                                    Some(syn::parse2(tokens).unwrap());
-                                            }
-                                        } else {
-                                            // safety net, remove?
-                                            panic!("unknown field attribute");
+                                if let syn::NestedMeta::Meta(syn::Meta::NameValue(name_value)) =
+                                    meta
+                                {
+                                    if name_value.path.is_ident("skip_serializing_if") {
+                                        // println!("so close!");
+                                        if let syn::Lit::Str(litstr) = &name_value.lit {
+                                            let tokens = syn::parse_str(&litstr.value()).unwrap();
+                                            // println!("found something: {:?}", &litstr.value());
+                                            skip_serializing_if =
+                                                Some(syn::parse2(tokens).unwrap());
                                         }
+                                    } else {
+                                        // safety net, remove?
+                                        panic!("unknown field attribute");
                                     }
-                                    _ => {}
                                 }
                             }
                         }
