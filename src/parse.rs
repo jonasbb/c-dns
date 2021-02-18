@@ -8,10 +8,19 @@ pub struct Input {
     pub fields: Vec<Field>,
 }
 
-#[derive(Default)]
 pub struct StructAttrs {
     pub offset: isize,
+    pub emit_length: bool,
     // pub skip_nones: bool,
+}
+
+impl Default for StructAttrs {
+    fn default() -> Self {
+        Self {
+            offset: 0,
+            emit_length: true,
+        }
+    }
 }
 
 pub struct Field {
@@ -33,7 +42,10 @@ fn parse_meta(attrs: &mut StructAttrs, meta: &syn::Meta) -> Result<()> {
                     if name_value.path.is_ident("offset") {
                         if let syn::Lit::Int(offset) = &name_value.lit {
                             attrs.offset = offset.base10_parse()?;
-                            // println!("shall use offset {}", attrs.offset);
+                        }
+                    } else if name_value.path.is_ident("emit_length") {
+                        if let syn::Lit::Bool(emit_length) = &name_value.lit {
+                            attrs.emit_length = emit_length.value;
                         }
                     }
                 }

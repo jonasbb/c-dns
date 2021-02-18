@@ -85,6 +85,11 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
     let ident = input.ident;
     let num_fields = count_serialized_fields(&input.fields);
     let serialize_fields = serialize_fields(&input.fields, input.attrs.offset);
+    let length = if input.attrs.emit_length {
+        quote!(Some(0 #( + #num_fields)*))
+    } else {
+        quote!(None)
+    };
 
     TokenStream::from(quote! {
         impl serde::Serialize for #ident {
@@ -93,8 +98,7 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
                 S: serde::Serializer
             {
                 use serde::ser::SerializeMap;
-                let num_fields = 0 #( + #num_fields)*;
-                let mut map = serializer.serialize_map(Some(num_fields))?;
+                let mut map = serializer.serialize_map(#length)?;
 
                 #(#serialize_fields)*
 
