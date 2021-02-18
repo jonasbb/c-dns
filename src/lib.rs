@@ -36,11 +36,11 @@ use syn::parse_macro_input;
 
 use crate::parse::Input;
 
-fn serialize_fields(fields: &[parse::Field], offset: usize) -> Vec<proc_macro2::TokenStream> {
+fn serialize_fields(fields: &[parse::Field], offset: isize) -> Vec<proc_macro2::TokenStream> {
     fields
         .iter()
         .map(|field| {
-            let index = field.index + offset;
+            let index = field.index as isize + offset;
             let member = &field.member;
             // println!("field {:?} index {:?}", &field.label, field.index);
             match &field.skip_serializing_if {
@@ -136,13 +136,13 @@ fn unwrap_expected_fields(fields: &[parse::Field]) -> Vec<proc_macro2::TokenStre
         .collect()
 }
 
-fn match_fields(fields: &[parse::Field], offset: usize) -> Vec<proc_macro2::TokenStream> {
+fn match_fields(fields: &[parse::Field], offset: isize) -> Vec<proc_macro2::TokenStream> {
     fields
         .iter()
         .map(|field| {
             let label = field.label.clone();
             let ident = format_ident!("{}", &field.label);
-            let index = field.index + offset;
+            let index = field.index as isize + offset;
             quote! {
                 #index => {
                     if #ident.is_some() {
@@ -185,6 +185,9 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
             while let Some(__serde_indexed_internal_key) = map.next_key()? {
                 match __serde_indexed_internal_key {
                     #(#match_fields)*
+                    x if x < 0 => {
+                        let _: ::serde_cbor::Value = map.next_value()?;
+                    }
                     _ => {
                         return Err(serde::de::Error::duplicate_field("inexistent field index"));
                     }

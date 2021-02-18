@@ -10,7 +10,7 @@ pub struct Input {
 
 #[derive(Default)]
 pub struct StructAttrs {
-    pub offset: usize,
+    pub offset: isize,
     // pub skip_nones: bool,
 }
 
