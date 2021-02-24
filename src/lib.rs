@@ -92,6 +92,7 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(quote! {
+        #[automatically_derived]
         impl serde::Serialize for #ident {
             fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
             where
@@ -203,6 +204,7 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
     };
 
     TokenStream::from(quote! {
+        #[automatically_derived]
         impl<'de> serde::Deserialize<'de> for #ident {
             fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
             where
