@@ -1,0 +1,29 @@
+[package]
+edition = "2018"
+name = "c-dns"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "c-dns-debug-print"
+required-features = ["app"]
+
+[features]
+app = [
+    "misc_utils",
+    "serde_path_to_error",
+]
+
+[dependencies]
+color-eyre = "0.5.11"
+enumset = {version = "1.0.6", features = ["serde"]}
+misc_utils = {version = "4.0.1", optional = true}
+serde = {version = "1.0.126", features = ["derive"]}
+serde-indexed = {git = "https://github.com/jonasbb/serde-indexed"}
+serde_bytes = "0.11.5"
+serde_cbor = "0.11.1"
+serde_path_to_error = {version = "0.1.4", optional = true}
+serde_repr = "0.1.7"
+serde_tuple = "0.5.0"
+serde_with = "1.9.1"
