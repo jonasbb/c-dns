@@ -86,9 +86,9 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
     let num_fields = count_serialized_fields(&input.fields);
     let serialize_fields = serialize_fields(&input.fields, input.attrs.offset);
     let length = if input.attrs.emit_length {
-        quote!(Some(0 #( + #num_fields)*))
+        quote!(::std::option::Option::Some(0 #( + #num_fields)*))
     } else {
-        quote!(None)
+        quote!(::std::option::Option::None)
     };
 
     TokenStream::from(quote! {
@@ -115,7 +115,7 @@ fn none_fields(fields: &[parse::Field]) -> Vec<proc_macro2::TokenStream> {
         .map(|field| {
             let ident = format_ident!("{}", &field.label);
             quote! {
-                let mut #ident = None;
+                let mut #ident = ::std::option::Option::None;
             }
         })
         .collect()
@@ -153,10 +153,10 @@ fn match_fields(fields: &[parse::Field], offset: isize) -> Vec<proc_macro2::Toke
             let index = field.index as isize + offset;
             quote! {
                 #index => {
-                    if #ident.is_some() {
-                        return Err(serde::de::Error::duplicate_field(#label));
+                    if ::std::option::Option::is_some(& #ident) {
+                        return ::std::result::Result::Err(serde::de::Error::duplicate_field(#label));
                     }
-                    #ident = Some(map.next_value()?);
+                    #ident = ::std::option::Option::Some(map.next_value()?);
                 },
             }
         })
