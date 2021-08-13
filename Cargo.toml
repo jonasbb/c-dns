@@ -1,2 +1,5 @@
 [workspace]
-members = ["c-dns"]
+members = [
+    "c-dns",
+    "serde-indexed",
+]
