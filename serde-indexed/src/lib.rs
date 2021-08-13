@@ -4,7 +4,7 @@
 The macros currently understand `serde`'s [`skip_serializing_if`][skip-serializing-if] field attribute
 and a custom `offset` container attribute.
 
-```
+```ignore
 use serde_indexed::{DeserializeIndexed, SerializeIndexed};
 
 #[derive(Clone, Debug, PartialEq, SerializeIndexed, DeserializeIndexed)]
