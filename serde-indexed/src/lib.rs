@@ -127,15 +127,18 @@ fn unwrap_expected_fields(fields: &[parse::Field]) -> Vec<proc_macro2::TokenStre
         .map(|field| {
             let label = field.label.clone();
             let ident = format_ident!("{}", &field.label);
-            if field.skip_serializing_if.is_none() {
-                quote! {
-                    let #ident = #ident.ok_or_else(|| serde::de::Error::missing_field(#label))?;
-                }
-            } else {
-                // TODO: still confused here, but the tests pass ;)
-                quote! {
-                    // let #ident = #ident.or(None);
-                }
+            quote!{
+                let #ident = match #ident {
+                        ::std::option::Option::Some(#ident) => #ident,
+                        ::std::option::Option::None =>
+                        match crate::derive_helpers::missing_field(#label)
+                            {
+                            ::std::result::Result::Ok(__val) => __val,
+                            ::std::result::Result::Err(__err) => {
+                                return ::std::result::Result::Err(__err);
+                            }
+                        },
+                    };
             }
         })
         .collect()
