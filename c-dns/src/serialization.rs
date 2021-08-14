@@ -20,6 +20,7 @@ use serde_tuple::{Deserialize_tuple, Serialize_tuple};
 use serde_with::skip_serializing_none;
 use std::fmt;
 use std::net::{Ipv4Addr, Ipv6Addr};
+use std::collections::BTreeMap;
 
 // /////////////////////////////////////////////////////////////////////////////
 // This section contains basic types common for all parts of the format
@@ -286,6 +287,10 @@ pub struct FilePreamble {
     /// The array must contain at least one entry.
     /// (The [`BlockPreamble.block_parameters_index`] item in each [`BlockPreamble`] indicates which array entry applies to that [`Block`].)
     pub block_parameters: Vec<BlockParameters>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 /// Parameters relating to data storage and collection that apply to one or more items of type [`Block`].
@@ -298,6 +303,10 @@ pub struct BlockParameters {
     pub storage_parameters: StorageParameters,
     /// Parameters relating to collection of the data in a [`Block`] item.
     pub collection_parameters: Option<CollectionParameters>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 impl fmt::Debug for BlockParameters {
@@ -357,6 +366,10 @@ pub struct StorageParameters {
     pub sampling_method: Option<String>,
     /// Information on the anonymization method used.
     pub anonymization_method: Option<String>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 impl fmt::Debug for StorageParameters {
@@ -410,6 +423,10 @@ pub struct StorageHints {
     pub rr_hints: EnumSet<RRHint>,
     /// Hints indicating which other datatypes are omitted.
     pub other_data_hints: EnumSet<OtherDataHints>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 /// Flag type for [`StorageHints.query_response_hints`]
@@ -566,6 +583,10 @@ pub struct CollectionParameters {
     pub generator_id: Option<String>,
     /// String identifying the collecting host.
     pub host_id: Option<String>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -601,6 +622,10 @@ pub struct Block {
     pub address_event_counts: Option<Vec<AddressEventCount>>,
     /// Details of malformed DNS messages.
     pub malformed_messages: Option<Vec<MalformedMessage>>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 impl fmt::Debug for Block {
@@ -634,6 +659,10 @@ pub struct BlockPreamble {
     ///
     /// If not present, index 0 is used.
     pub block_parameters_index: Option<usize>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(BlockPreamble, earliest_time, block_parameters_index,);
@@ -657,6 +686,10 @@ pub struct BlockStatistics {
     pub discarded_opcode: Option<u8>,
     /// Number of malformed messages processed from the input traffic stream during collection of data in this [`Block`] item.
     pub malformed_items: Option<usize>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -720,6 +753,10 @@ pub struct BlockTables {
 
     /// Array of the contents of malformed messages.
     pub malformed_message_data: Option<Vec<MalformedMessageData>>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -818,6 +855,10 @@ pub struct QueryResponseSignature {
     ///
     /// If the Response contains an OPT RR, this value incorporates any EXTENDED-RCODE value.
     pub response_rcode: Option<u16>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -1042,6 +1083,10 @@ pub struct MalformedMessageData {
     pub mm_transport_flags: Option<TransportFlags>,
     /// The payload (raw bytes) of the DNS message.
     pub mm_payload: Option<ByteBuf>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -1097,6 +1142,10 @@ pub struct QueryResponse {
     pub query_extended: Option<QueryResponseExtended>,
     /// Extended Response data.
     pub response_extended: Option<QueryResponseExtended>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -1127,6 +1176,10 @@ pub struct ResponseProcessingData {
     pub bailiwick_index: Option<usize>,
     /// Flags relating to Response processing.
     pub processing_flags: Option<ResponseProcessingFlags>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(ResponseProcessingData, bailiwick_index, processing_flags,);
@@ -1160,6 +1213,10 @@ pub struct QueryResponseExtended {
     ///
     ///  Note that Query OPT RR data can optionally be stored in the QuerySignature.
     pub additional_index: Option<usize>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 crate::debug_unwrap_option_fields!(
@@ -1189,6 +1246,10 @@ pub struct AddressEventCount {
     pub ae_transport_flags: Option<TransportFlags>,
     /// The number of occurrences of this event during the [`Block`] collection period.
     pub ae_count: usize,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 impl fmt::Debug for AddressEventCount {
@@ -1237,4 +1298,8 @@ pub struct MalformedMessage {
     pub client_port: Option<u16>,
     /// The index in the [`BlockTables.malformed_message_data`] array of the message data for this message.
     pub message_data_index: Option<usize>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
