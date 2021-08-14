@@ -26,35 +26,34 @@ pub struct SomeKeys {
 [serde-cbor]: https://docs.rs/serde_cbor
 */
 
-extern crate proc_macro;
-
 mod parse;
 
+use crate::parse::{Field, Input};
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::parse_macro_input;
-
-use crate::parse::Input;
+use syn::{parse_macro_input, Error};
 
 fn serialize_fields(fields: &[parse::Field], offset: isize) -> Vec<proc_macro2::TokenStream> {
     fields
         .iter()
         .map(|field| {
             let index = field.index as isize + offset;
-            let member = &field.member;
-            // println!("field {:?} index {:?}", &field.label, field.index);
-            match &field.skip_serializing_if {
-                Some(path) => {
-                    quote! {
-                        if !#path(&self.#member) {
-                            map.serialize_entry(&#index, &self.#member)?;
-                        }
+            let ident = &field.ident;
+            if let Some(path) = &field.skip_serializing_if {
+                quote! {
+                    if !#path(&self.#ident) {
+                        map.serialize_entry(&#index, &self.#ident)?;
                     }
                 }
-                None => {
-                    quote! {
-                        map.serialize_entry(&#index, &self.#member)?;
+            } else if field.collect_extras {
+                quote! {
+                    for (key, value) in &self.#ident {
+                        map.serialize_entry(key, value)?;
                     }
+                }
+            } else {
+                quote! {
+                    map.serialize_entry(&#index, &self.#ident)?;
                 }
             }
         })
@@ -65,15 +64,13 @@ fn count_serialized_fields(fields: &[parse::Field]) -> Vec<proc_macro2::TokenStr
     fields
         .iter()
         .map(|field| {
-            // let index = field.index + offset;
-            let member = &field.member;
-            match &field.skip_serializing_if {
-                Some(path) => {
-                    quote! { if #path(&self.#member) { 0 } else { 1 } }
-                }
-                None => {
-                    quote! { 1 }
-                }
+            let ident = &field.ident;
+            if let Some(path) = &field.skip_serializing_if {
+                quote! { if #path(&self.#ident) { 0 } else { 1 } }
+            } else if field.collect_extras {
+                quote! { self.#ident.len() }
+            } else {
+                quote! { 1 }
             }
         })
         .collect()
@@ -127,7 +124,7 @@ fn unwrap_expected_fields(fields: &[parse::Field]) -> Vec<proc_macro2::TokenStre
         .map(|field| {
             let label = field.label.clone();
             let ident = format_ident!("{}", &field.label);
-            quote!{
+            quote! {
                 let #ident = match #ident {
                         ::std::option::Option::Some(#ident) => #ident,
                         ::std::option::Option::None =>
@@ -179,10 +176,54 @@ fn all_fields(fields: &[parse::Field]) -> Vec<proc_macro2::TokenStream> {
 pub fn derive_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as Input);
     let ident = input.ident;
-    let none_fields = none_fields(&input.fields);
-    let unwrap_expected_fields = unwrap_expected_fields(&input.fields);
-    let match_fields = match_fields(&input.fields, input.attrs.offset);
+    let mut none_fields = none_fields(&input.fields);
+    let mut unwrap_expected_fields = unwrap_expected_fields(&input.fields);
+    let mut match_fields = match_fields(&input.fields, input.attrs.offset);
     let all_fields = all_fields(&input.fields);
+
+    // Check if an extras field exists, duplication is error
+    // If found remove it from the initialization and unwrapping lists
+    // Generate special initialization code
+    // Generate code to handle negative values
+    let extra_fields: Vec<&Field> = input
+        .fields
+        .iter()
+        .filter(|field| field.collect_extras)
+        .collect();
+    if extra_fields.len() > 1 {
+        return Error::new(
+            extra_fields[1].ident.span(),
+            "At most one field can be annotated with #[serde_indexed(extras)]",
+        )
+        .into_compile_error()
+        .into();
+    }
+    let extra_field = extra_fields.get(0);
+    let handle_extra_fields = if let Some(extra_field) = extra_field {
+        none_fields.remove(extra_field.index);
+        unwrap_expected_fields.remove(extra_field.index);
+        match_fields.remove(extra_field.index);
+
+        let ident = &extra_field.ident;
+        let ty = &extra_field.ty;
+        none_fields.push(quote! {
+            let mut #ident: #ty = ::std::default::Default::default();
+        });
+
+        // Add negative fields to the extras map
+        quote! {
+            x if x < 0 => {
+                #ident.insert(x, map.next_value()?);
+            }
+        }
+    } else {
+        // Consume negative fields and throw them away
+        quote! {
+            x if x < 0 => {
+                let _: ::serde::de::IgnoredAny = map.next_value()?;
+            }
+        }
+    };
 
     let the_loop = if !input.fields.is_empty() {
         // NB: In the previous "none_fields", we use the actual struct's
@@ -193,9 +234,7 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
             while let Some(__serde_indexed_internal_key) = map.next_key()? {
                 match __serde_indexed_internal_key {
                     #(#match_fields)*
-                    x if x < 0 => {
-                        let _: ::serde_cbor::Value = map.next_value()?;
-                    }
+                    #handle_extra_fields
                     _ => {
                         return Err(serde::de::Error::duplicate_field("inexistent field index"));
                     }

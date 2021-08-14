@@ -11,7 +11,6 @@ pub struct Input {
 pub struct StructAttrs {
     pub offset: isize,
     pub emit_length: bool,
-    // pub skip_nones: bool,
 }
 
 impl Default for StructAttrs {
@@ -25,10 +24,10 @@ impl Default for StructAttrs {
 
 pub struct Field {
     pub label: String,
-    pub member: syn::Member,
+    pub ident: syn::Ident,
     pub index: usize,
     pub skip_serializing_if: Option<syn::ExprPath>,
-    // pub attrs: attr::Field,
+    pub collect_extras: bool,
     pub ty: syn::Type,
     pub original: syn::Field,
 }
@@ -49,16 +48,6 @@ fn parse_meta(attrs: &mut StructAttrs, meta: &syn::Meta) -> Result<()> {
                         }
                     }
                 }
-                // This `skip_nones` approach is tricky, as then we
-                // need to detect Option types, which means a lot of path
-                // manipulation, possibly in vain.
-                //
-                // syn::NestedMeta::Meta(syn::Meta::Path(path)) => {
-                //     if path.is_ident("skip_nones") {
-                //         // println!("shall skip nones");
-                //         attrs.skip_nones = true;
-                //     }
-                // },
                 _ => {}
             }
         }
@@ -107,8 +96,6 @@ impl Parse for Input {
 
         let fields = fields_from_ast(&syn_fields.named);
 
-        //serde::internals::ast calls `fields_from_ast(cx, &fields.named, attrs, container_default)`
-
         Ok(Input {
             ident: derive_input.ident,
             attrs,
@@ -131,8 +118,8 @@ fn fields_from_ast(fields: &syn::punctuated::Punctuated<syn::Field, Token![,]>) 
                     panic!("input struct must have named fields");
                 }
             },
-            member: match &field.ident {
-                Some(ident) => syn::Member::Named(ident.clone()),
+            ident: match &field.ident {
+                Some(ident) => ident.clone(),
                 None => {
                     // TODO: does this happen?
                     panic!("input struct must have named fields");
@@ -167,6 +154,29 @@ fn fields_from_ast(fields: &syn::punctuated::Punctuated<syn::Field, Token![,]>) 
                     }
                 }
                 skip_serializing_if
+            },
+            collect_extras: {
+                // parse a: #[serde_indexed(extras)]
+                let mut collect_extras = false;
+                for attr in &field.attrs {
+                    if attr.path.is_ident("serde_indexed") {
+                        if let Ok(syn::Meta::List(value)) = attr.parse_meta() {
+                            for meta in &value.nested {
+                                if let syn::NestedMeta::Meta(syn::Meta::Path(path)) =
+                                    meta
+                                {
+                                    if path.is_ident("extras") {
+                                        collect_extras = true;
+                                    } else {
+                                        // safety net, remove?
+                                        panic!("unknown field attribute");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                collect_extras
             },
             ty: field.ty.clone(),
             original: field.clone(),
