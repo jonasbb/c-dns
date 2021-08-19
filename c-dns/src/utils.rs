@@ -19,6 +19,7 @@ macro_rules! debug_unwrap_option_fields {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 let mut ds = f.debug_struct(stringify!($struct));
                 $crate::debug_unwrap_option_single_field!(self, ds, $($field,)+);
+                $crate::debug_extra_values!(self, ds, extra_values);
                 ds.finish()
             }
         }
@@ -38,4 +39,16 @@ macro_rules! debug_unwrap_option_single_field {
         }
         )+
     }
+}
+
+/// Print the `extra_values` in the [`Debug`] output
+///
+/// Prints the fields starting from -1 and decrementing the number.
+#[macro_export]
+macro_rules! debug_extra_values {
+    ($self:ident, $ds:ident, $extra_values:ident) => {
+        for (key, value) in $self.$extra_values.iter().rev() {
+            $ds.field(&format!("{}", key), &value);
+        }
+    };
 }

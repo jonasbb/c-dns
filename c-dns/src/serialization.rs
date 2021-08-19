@@ -18,9 +18,9 @@ use serde_indexed::{DeserializeIndexed, SerializeIndexed};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_tuple::{Deserialize_tuple, Serialize_tuple};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::collections::BTreeMap;
 
 // /////////////////////////////////////////////////////////////////////////////
 // This section contains basic types common for all parts of the format
@@ -268,7 +268,7 @@ pub struct File {
 ///
 /// Original format description in [Section 7.3.1](https://tools.ietf.org/html/rfc8618#section-7.3.1).
 #[skip_serializing_none]
-#[derive(Debug, SerializeIndexed, DeserializeIndexed)]
+#[derive(SerializeIndexed, DeserializeIndexed)]
 pub struct FilePreamble {
     /// Integer with value `1`.
     ///
@@ -293,6 +293,18 @@ pub struct FilePreamble {
     pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
+impl fmt::Debug for FilePreamble {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ds = f.debug_struct("FilePreamble");
+        ds.field("major_format_version", &self.major_format_version);
+        ds.field("minor_format_version", &self.minor_format_version);
+        crate::debug_unwrap_option_single_field!(self, ds, private_version,);
+        ds.field("block_parameters", &self.block_parameters);
+        crate::debug_extra_values!(self, ds, extra_values);
+        ds.finish()
+    }
+}
+
 /// Parameters relating to data storage and collection that apply to one or more items of type [`Block`].
 ///
 /// Original format description in [Section 7.3.1.1](https://tools.ietf.org/html/rfc8618#section-7.3.1.1).
@@ -314,6 +326,7 @@ impl fmt::Debug for BlockParameters {
         let mut ds = f.debug_struct("StorageParameters");
         ds.field("storage_parameters", &self.storage_parameters);
         crate::debug_unwrap_option_single_field!(self, ds, collection_parameters,);
+        crate::debug_extra_values!(self, ds, extra_values);
         ds.finish()
     }
 }
@@ -391,6 +404,7 @@ impl fmt::Debug for StorageParameters {
             sampling_method,
             anonymization_method,
         );
+        crate::debug_extra_values!(self, ds, extra_values);
         ds.finish()
     }
 }
@@ -413,7 +427,7 @@ pub enum StorageFlags {
 /// In other words, where a map contains another map, the hint on the containing map overrides any hints in the contained map and the contained map is omitted.
 ///
 /// Original format description in [Section 7.3.1.1.1.1](https://tools.ietf.org/html/rfc8618#section-7.3.1.1.1.1).
-#[derive(Debug, SerializeIndexed, DeserializeIndexed)]
+#[derive(SerializeIndexed, DeserializeIndexed)]
 pub struct StorageHints {
     /// Hints indicating which [`QueryResponse`] fields are omitted.
     pub query_response_hints: EnumSet<QueryResponseHints>,
@@ -427,6 +441,21 @@ pub struct StorageHints {
     /// Collect additional custom values with negative index values.
     #[serde_indexed(extras)]
     pub extra_values: BTreeMap<isize, serde_cbor::Value>,
+}
+
+impl fmt::Debug for StorageHints {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ds = f.debug_struct("StorageHints");
+        ds.field("query_response_hints", &self.query_response_hints);
+        ds.field(
+            "query_response_signature_hints",
+            &self.query_response_signature_hints,
+        );
+        ds.field("rr_hints", &self.rr_hints);
+        ds.field("other_data_hints", &self.other_data_hints);
+        crate::debug_extra_values!(self, ds, extra_values);
+        ds.finish()
+    }
 }
 
 /// Flag type for [`StorageHints.query_response_hints`]
@@ -641,6 +670,7 @@ impl fmt::Debug for Block {
             address_event_counts,
             malformed_messages,
         );
+        crate::debug_extra_values!(self, ds, extra_values);
         ds.finish()
     }
 }
@@ -1033,13 +1063,27 @@ pub enum DNSFlags {
 /// Details on individual Questions in a Question section.
 ///
 /// Original format description in [Section 7.3.2.3.3](https://tools.ietf.org/html/rfc8618#section-7.3.2.3.3).
-#[derive(Debug, SerializeIndexed, DeserializeIndexed)]
+#[derive(SerializeIndexed, DeserializeIndexed)]
 #[serde_indexed(emit_length = false)]
 pub struct Question {
     /// The index in the [`BlockTables.name_rdata`] array of the QNAME.
     pub name_index: usize,
     /// The index in the [`BlockTables.classtype`] array of the CLASS and TYPE of the Question.
     pub classtype_index: usize,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
+}
+
+impl fmt::Debug for Question {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut ds = f.debug_struct("Question");
+        ds.field("name_index", &self.name_index)
+            .field("classtype_index", &self.classtype_index);
+        crate::debug_extra_values!(self, ds, extra_values);
+        ds.finish()
+    }
 }
 
 /// Details on individual RRs in RR sections.
@@ -1056,6 +1100,10 @@ pub struct RR {
     pub ttl: Option<u32>,
     /// The index in the [`BlockTables.name_rdata`] array of the RR RDATA.
     pub rdata_index: Option<usize>,
+
+    /// Collect additional custom values with negative index values.
+    #[serde_indexed(extras)]
+    pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
 
 impl fmt::Debug for RR {
@@ -1064,6 +1112,7 @@ impl fmt::Debug for RR {
         ds.field("name_index", &self.name_index)
             .field("classtype_index", &self.classtype_index);
         crate::debug_unwrap_option_single_field!(self, ds, ttl, rdata_index,);
+        crate::debug_extra_values!(self, ds, extra_values);
         ds.finish()
     }
 }
@@ -1260,6 +1309,7 @@ impl fmt::Debug for AddressEventCount {
         ds.field("ae_address_index", &self.ae_address_index);
         crate::debug_unwrap_option_single_field!(self, ds, ae_transport_flags,);
         ds.field("ae_count", &self.ae_type);
+        crate::debug_extra_values!(self, ds, extra_values);
         ds.finish()
     }
 }
@@ -1287,7 +1337,7 @@ pub enum AddressEventType {
 ///
 /// Original format description in [Section 7.3.2.6](https://tools.ietf.org/html/rfc8618#section-7.3.2.6).
 #[skip_serializing_none]
-#[derive(Debug, SerializeIndexed, DeserializeIndexed)]
+#[derive(SerializeIndexed, DeserializeIndexed)]
 #[serde_indexed(emit_length = false)]
 pub struct MalformedMessage {
     /// Message timestamp as an offset in ticks from [`BlockPreamble.earliest_time`].
@@ -1303,3 +1353,11 @@ pub struct MalformedMessage {
     #[serde_indexed(extras)]
     pub extra_values: BTreeMap<isize, serde_cbor::Value>,
 }
+
+crate::debug_unwrap_option_fields!(
+    MalformedMessage,
+    time_offset,
+    client_address_index,
+    client_port,
+    message_data_index,
+);
