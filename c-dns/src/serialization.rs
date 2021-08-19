@@ -142,20 +142,40 @@ impl IpAddr {
 pub struct NameOrRdata(ByteBuf);
 
 impl NameOrRdata {
-    pub fn to_string_domain(&self) -> String {
+    #[allow(clippy::result_unit_err)]
+    pub fn to_string_domain(&self) -> Result<String, ()> {
+        if self.0.len() > 255 {
+            // A valid domain name is at most 255 bytes long.
+            return Err(());
+        } else if self.0 == [0] {
+            // Special case for empty domain name, since otherwise an empty string is returned, instead of a single dot.
+            return Ok(".".to_string());
+        }
         let mut res = Vec::with_capacity(self.0.len());
         let mut pos = 0;
         loop {
             let len = self.0[pos];
-            if len == 0 {
-                break;
-            }
             pos += 1;
+            if len == 0 && dbg!(dbg!(usize::from(len) + pos) == dbg!(self.0.len())) {
+                // This conversion fails is the bytes are not valid UTF-8, but a domain MUST be ASCII.
+                let res = String::from_utf8(res).map_err(|_| ());
+                return res;
+            } else if dbg!(len == 0) || dbg!(len > 63) || dbg!(usize::from(len) + pos > self.0.len()) {
+                // len == 0
+                // There are trailing bytes after the last label.
+                //
+                // len > 63
+                // Label too long
+                // A valid label is at most 63 bytes long.
+                //
+                // usize::from(len) + pos > self.0.len()
+                // Current position is past the end of the buffer.
+                return Err(());
+            }
             res.extend(&self.0[pos as usize..][..len as usize]);
             res.push(b'.');
             pos += len as usize;
         }
-        String::from_utf8(res).unwrap_or_else(|_| "<invalid-domain>".to_string())
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -165,7 +185,11 @@ impl NameOrRdata {
 
 impl fmt::Debug for NameOrRdata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("NameOrRdata({:?})", self.0))
+        if let Ok(domain) = self.to_string_domain() {
+            f.write_fmt(format_args!("NameOrRdata({:?})", domain))
+        } else {
+            f.write_fmt(format_args!("NameOrRdata({:?})", self.0))
+        }
     }
 }
 
