@@ -323,7 +323,7 @@ pub struct BlockParameters {
 
 impl fmt::Debug for BlockParameters {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut ds = f.debug_struct("StorageParameters");
+        let mut ds = f.debug_struct("BlockParameters");
         ds.field("storage_parameters", &self.storage_parameters);
         crate::debug_unwrap_option_single_field!(self, ds, collection_parameters,);
         crate::debug_extra_values!(self, ds, extra_values);
