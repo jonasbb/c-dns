@@ -156,11 +156,11 @@ impl NameOrRdata {
         loop {
             let len = self.0[pos];
             pos += 1;
-            if len == 0 && dbg!(dbg!(usize::from(len) + pos) == dbg!(self.0.len())) {
+            if len == 0 && usize::from(len) + pos == self.0.len() {
                 // This conversion fails is the bytes are not valid UTF-8, but a domain MUST be ASCII.
                 let res = String::from_utf8(res).map_err(|_| ());
                 return res;
-            } else if dbg!(len == 0) || dbg!(len > 63) || dbg!(usize::from(len) + pos > self.0.len()) {
+            } else if len == 0 || len > 63 || usize::from(len) + pos > self.0.len() {
                 // len == 0
                 // There are trailing bytes after the last label.
                 //
