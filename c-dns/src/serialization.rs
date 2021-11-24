@@ -118,8 +118,6 @@ impl IpAddr {
     }
 
     pub fn as_ipv6(&self) -> color_eyre::eyre::Result<Ipv6Addr> {
-        use std::convert::TryFrom;
-
         Ok(match self.0.as_slice() {
             &[] => bail!("No bytes to convert into Ipv6Addr"),
             bytes if bytes.len() <= 16 => {
