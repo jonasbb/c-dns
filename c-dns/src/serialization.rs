@@ -961,7 +961,7 @@ impl TransportFlags {
 
     pub fn transport_protocol(&self) -> crate::Transport {
         // Bit 1..=4 are for Transport
-        let transport = (self.0 & 0b0001_1110) >> 3;
+        let transport = (self.0 & 0b0001_1110) >> 1;
         match transport {
             0 => crate::Transport::Udp,
             1 => crate::Transport::Tcp,
